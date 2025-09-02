@@ -2,9 +2,6 @@ FROM frolvlad/alpine-glibc
 
 WORKDIR /www/allinssl/
 
-RUN apk add --no-cache curl tzdata\
-    && curl https://node1.allinssl.com/bin/allinssl-$(uname -s)-$(uname -m).tar.gz | tar -xz -C /www/allinssl/ \
-    && apk del curl
 ENV TZ=Asia/Shanghai
 RUN cat > /entrypoint.sh <<'EOF'
 #!/bin/sh
