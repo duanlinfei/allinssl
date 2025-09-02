@@ -3,6 +3,7 @@ package cas
 import (
 	"crypto/md5"
 	"fmt"
+	"os"
 
 	cas "github.com/alibabacloud-go/cas-20200407/v4/client"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
@@ -30,7 +31,16 @@ func UploadToCas(client *cas.Client, cert, key, name string) error {
 		Key:  tea.String(key),
 	}
 	runtime := &util.RuntimeOptions{}
-	_, err := client.UploadUserCertificateWithOptions(uploadUserCertificateRequest, runtime)
+	resp, err := client.UploadUserCertificateWithOptions(uploadUserCertificateRequest, runtime)
+	if err == nil {
+		// 将certId保存到data目录下，按suffix命名文件
+		filename := fmt.Sprintf("data/%s.txt", suffix)
+		err = os.WriteFile(filename, []byte(fmt.Sprintf("%d", resp.Body.CertId)), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 
