@@ -35,7 +35,7 @@ func UploadToCas(client *cas.Client, cert, key, name string) error {
 	if err == nil {
 		// 将certId保存到data目录下，按suffix命名文件
 		filename := fmt.Sprintf("data/%s.txt", suffix)
-		err = os.WriteFile(filename, []byte(fmt.Sprintf("%d", resp.Body.CertId)), 0644)
+		err = os.WriteFile(filename, []byte(fmt.Sprintf("%d", *resp.Body.CertId)), 0644)
 		if err != nil {
 			return err
 		}
