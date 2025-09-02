@@ -3,16 +3,19 @@ package deploy
 import (
 	"ALLinSSL/backend/internal/access"
 	"ALLinSSL/backend/internal/cert/deploy/client/aliyun"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	aliyuncdn "github.com/alibabacloud-go/cdn-20180510/v6/client"
 	aliyunopenapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	aliyunmarket "github.com/alibabacloud-go/market-20151101/v4/client"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func ClientAliCdn(accessKey, accessSecret string) (_result *aliyuncdn.Client, err error) {
@@ -174,13 +177,32 @@ func DeployOss(cfg map[string]any) error {
 		return fmt.Errorf("证书错误：cert")
 	}
 
-	putBucketCnameWithCertificateRequest := oss.PutBucketCname{
-		Cname: domain,
-		CertificateConfiguration: &oss.CertificateConfiguration{
+	// 计算证书的MD5后缀，用于查找对应的certId文件
+	suffix := GetMD5Suffix(certPem)
+	filename := fmt.Sprintf("data/%s.txt", suffix)
+
+	// 尝试从文件读取certId
+	var certConfig *oss.CertificateConfiguration
+	certIdBytes, err := os.ReadFile(filename)
+	if err == nil {
+		// 文件存在，使用CertId方式
+		certId := strings.TrimSpace(string(certIdBytes))
+		certConfig = &oss.CertificateConfiguration{
+			CertId: certId,
+			Force:  true,
+		}
+	} else {
+		// 文件不存在或读取失败，使用证书内容方式
+		certConfig = &oss.CertificateConfiguration{
 			Certificate: certPem,
 			PrivateKey:  keyPem,
 			Force:       true,
-		},
+		}
+	}
+
+	putBucketCnameWithCertificateRequest := oss.PutBucketCname{
+		Cname:                    domain,
+		CertificateConfiguration: certConfig,
 	}
 	err = client.PutBucketCnameWithCertificate(bucket, putBucketCnameWithCertificateRequest)
 	return err
@@ -297,4 +319,16 @@ func DeployAliyunWaf(cfg map[string]any) error {
 	}
 
 	return nil
+}
+
+func GetMD5Suffix(data string) string {
+	// 计算MD5值
+	hash := md5.Sum([]byte(data))
+	// 转换为十六进制字符串
+	md5Str := fmt.Sprintf("%x", hash)
+	// 获取后6位
+	if len(md5Str) > 6 {
+		return md5Str[len(md5Str)-6:]
+	}
+	return md5Str
 }
